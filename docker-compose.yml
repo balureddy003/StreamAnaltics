@@ -1,0 +1,51 @@
+version: "2.1"
+services:
+  # Kafka/Zookeeper container
+  docker-kafka:
+    build: kafka/
+    container_name: docker-kafka
+    environment:
+      - ADVERTISED_HOST=docker-kafka
+      - LOG_RETENTION_HOURS=1
+      - AUTO_CREATE_TOPICS=false
+      - KAFKA_CREATE_TOPICS=divolte:4:1
+    ports:
+      - 9092:9092 # kafka broker
+      - 2181:2181 # Zookeeper
+  # Divolte container
+  docker-divolte:
+    build: divolte/
+    container_name: docker-divolte
+    environment:
+      - DIVOLTE_KAFKA_BROKER_LIST=docker-kafka:9092
+    volumes:
+      - //C/Users/Public/Documents/Hyper-V/config/druid/conf/:/opt/divolte/divolte-collector-0.5.0/conf/
+    ports:
+      - 8290:8290
+    depends_on:
+      - docker-kafka
+    links:
+      - docker-kafka:docker-kafka
+  # Druid container
+  docker-druid:
+    image: druidio/example-cluster
+    ports:
+      - 9081:8081
+      - 9082:8082
+    depends_on:
+      - docker-kafka
+    links:
+      - docker-kafka:docker-kafka
+  # Superset container
+  docker-superset:
+    image: amancevice/superset
+    ports:
+      - 9088:8088
+    links:
+      - docker-druid:docker-druid
+  # Superset container
+  docker-app:
+    build: app/
+    container_name: docker-app
+    ports:
+      - 8090:8090
